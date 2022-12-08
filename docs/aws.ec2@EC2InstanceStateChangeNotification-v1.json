@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "EC2InstanceStateChangeNotification",
+  "definitions": {
+    "EC2InstanceStateChangeNotification": {
+      "properties": {
+        "instance-id": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "required": ["instance-id", "state"],
+      "type": "object"
+    }
+  },
+  "properties": {
+    "account": {
+      "type": "string"
+    },
+    "detail": {
+      "$ref": "#/definitions/EC2InstanceStateChangeNotification"
+    },
+    "detail-type": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "region": {
+      "type": "string"
+    },
+    "resources": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "source": {
+      "type": "string"
+    },
+    "time": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "required": ["detail-type", "resources", "id", "source", "time", "detail", "region", "version", "account"],
+  "type": "object",
+  "x-amazon-events-detail-type": "EC2 Instance State-change Notification",
+  "x-amazon-events-source": "aws.ec2"
+}
