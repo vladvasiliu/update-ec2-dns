@@ -3,9 +3,11 @@ mod ec2;
 mod route53;
 
 use crate::ec2::{describe_instance, Ec2StateChangeNotification};
+use anyhow::{anyhow, Context};
 use aws_sdk_ec2::model::InstanceStateName;
+use aws_sdk_route53::model::{ChangeAction, RrType};
 use lambda_runtime::{run, service_fn, Error, LambdaEvent};
-use tracing::{info, warn};
+use tracing::{instrument, warn, Span};
 
 static TABLE_NAME: &str = "update-ec2-dns";
 
@@ -24,26 +26,27 @@ async fn main() -> Result<()> {
     run(service_fn(function_handler)).await
 }
 
+#[instrument(fields(instance_id), skip(event))]
 async fn function_handler(event: LambdaEvent<Ec2StateChangeNotification>) -> Result<()> {
     // Extract some useful information from the request
-    match event.payload.detail.state {
-        InstanceStateName::Running | InstanceStateName::Stopping => (),
+    let action = match event.payload.detail.state {
+        InstanceStateName::Running => ChangeAction::Create,
+        InstanceStateName::Stopping => ChangeAction::Delete,
         _ => return Ok(()),
     };
 
     let config = aws_config::load_from_env().await;
 
     let instance_id = event.payload.detail.instance_id;
+    Span::current().record("instance_id", &instance_id);
 
-    let instance_info = match db::fetch_from_db(&config, TABLE_NAME, &instance_id).await? {
-        None => {
-            info!("Instance was not found in the database. Ignoring.");
-            return Ok(());
-        }
-        Some(i) => i,
-    };
+    let instance_info = db::fetch_from_db(&config, TABLE_NAME, &instance_id)
+        .await?
+        .ok_or_else(|| anyhow!("Instance was not found in the database. Ignoring."))?;
 
-    let description = describe_instance(&config, &instance_id).await?;
+    let description = describe_instance(&config, &instance_id)
+        .await
+        .context("Failed to describe instance")?;
 
     if event.payload.detail.state != description.state {
         warn!(
@@ -51,9 +54,33 @@ async fn function_handler(event: LambdaEvent<Ec2StateChangeNotification>) -> Res
             event.payload.detail.state.as_str(),
             description.state.as_str()
         );
+        return Ok(());
     }
 
-    println!("{:?}", description);
+    let route53_client = route53::Route53Client::new(&config, &instance_info.zone_id);
+
+    let mut changes = Vec::with_capacity(2);
+    if let Some(v6) = description.ipv6_address {
+        let change = route53::get_change(
+            action.clone(),
+            &instance_info.record_name,
+            RrType::Aaaa,
+            &v6.to_string(),
+        );
+        changes.push(change);
+    }
+    if let Some(v4) = description.public_ip_address {
+        let change = route53::get_change(
+            action,
+            &instance_info.record_name,
+            RrType::A,
+            &v4.to_string(),
+        );
+        changes.push(change);
+    }
+    route53_client
+        .change_record_set(changes, "update-ec2-dns")
+        .await?;
 
     Ok(())
 }
