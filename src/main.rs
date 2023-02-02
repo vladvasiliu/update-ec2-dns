@@ -31,7 +31,7 @@ async fn function_handler(event: LambdaEvent<Ec2StateChangeNotification>) -> Res
     // Extract some useful information from the request
     let action = match event.payload.detail.state {
         InstanceStateName::Running => ChangeAction::Create,
-        InstanceStateName::Stopping => ChangeAction::Delete,
+        InstanceStateName::Stopping | InstanceStateName::ShuttingDown => ChangeAction::Delete,
         _ => return Ok(()),
     };
 
@@ -57,8 +57,6 @@ async fn function_handler(event: LambdaEvent<Ec2StateChangeNotification>) -> Res
         return Ok(());
     }
 
-    let route53_client = route53::Route53Client::new(&config, &instance_info.zone_id);
-
     let mut changes = Vec::with_capacity(2);
     if let Some(v6) = description.ipv6_address {
         let change = route53::get_change(
@@ -78,6 +76,12 @@ async fn function_handler(event: LambdaEvent<Ec2StateChangeNotification>) -> Res
         );
         changes.push(change);
     }
+    if changes.is_empty() {
+        warn!("No IPv4 or IPv6 found");
+        return Ok(());
+    }
+
+    let route53_client = route53::Route53Client::new(&config, &instance_info.zone_id);
     route53_client
         .change_record_set(changes, "update-ec2-dns")
         .await?;

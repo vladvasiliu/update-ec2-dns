@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context};
+use anyhow::Context;
 use aws_config::SdkConfig;
 use aws_sdk_dynamodb::model::AttributeValue;
 use serde::{Deserialize, Serialize};
