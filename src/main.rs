@@ -4,8 +4,8 @@ mod route53;
 
 use crate::ec2::{describe_instance, Ec2StateChangeNotification};
 use anyhow::{anyhow, Context};
-use aws_sdk_ec2::model::InstanceStateName;
-use aws_sdk_route53::model::{ChangeAction, RrType};
+use aws_sdk_ec2::types::InstanceStateName;
+use aws_sdk_route53::types::{ChangeAction, RrType};
 use lambda_runtime::{run, service_fn, Error, LambdaEvent};
 use tracing::{instrument, warn, Span};
 

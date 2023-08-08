@@ -1,7 +1,7 @@
 use anyhow::Result;
 use aws_config::SdkConfig;
-pub use aws_sdk_route53::model::ChangeAction;
-use aws_sdk_route53::model::{Change, ChangeBatch, ResourceRecord, ResourceRecordSet, RrType};
+pub use aws_sdk_route53::types::ChangeAction;
+use aws_sdk_route53::types::{Change, ChangeBatch, ResourceRecord, ResourceRecordSet, RrType};
 
 use tracing::info;
 

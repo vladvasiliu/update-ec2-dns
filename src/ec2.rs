@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use aws_config::SdkConfig;
-use aws_sdk_ec2::model::InstanceStateName;
+use aws_sdk_ec2::types::InstanceStateName;
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use std::net::{Ipv4Addr, Ipv6Addr};

@@ -1,6 +1,6 @@
 use anyhow::Context;
 use aws_config::SdkConfig;
-use aws_sdk_dynamodb::model::AttributeValue;
+use aws_sdk_dynamodb::types::AttributeValue;
 use serde::{Deserialize, Serialize};
 use serde_dynamo::from_item;
 
